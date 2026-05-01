@@ -1,18 +1,10 @@
 import os
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'dataset', 'sequences', '00')
-DOCS_PATH = os.path.join(os.path.dirname(__file__), '..', 'docs')
-
-
-def read_images(idx):
-    img_name = '{:06d}.png'.format(idx)
-    img1 = cv2.imread(os.path.join(DATA_PATH, 'image_0', img_name), 0)
-    img2 = cv2.imread(os.path.join(DATA_PATH, 'image_1', img_name), 0)
-    return img1, img2
+from utils import (DOCS_PATH, read_images, detect_descriptors,
+                   match_descriptors, apply_ratio_test)
 
 
 def part1_1():
@@ -29,9 +21,8 @@ def part1_1():
     """
     img_left, img_right = read_images(0)
 
-    detector = cv2.SIFT_create()
-    kp_left, des_left = detector.detectAndCompute(img_left, None)
-    kp_right, des_right = detector.detectAndCompute(img_right, None)
+    kp_left, des_left = detect_descriptors(img_left)
+    kp_right, des_right = detect_descriptors(img_right)
 
     print(f"Part 1.1: Detected {len(kp_left)} keypoints in left image, "
           f"{len(kp_right)} keypoints in right image")
@@ -77,8 +68,7 @@ def part1_3(img_left, img_right, kp_left, des_left, kp_right, des_right):
     - k=2 returns the two closest matches per descriptor, which is required for
       Lowe's ratio test in part 1.4.
     """
-    bf = cv2.BFMatcher(cv2.NORM_L2)
-    matches = bf.knnMatch(des_left, des_right, k=2)
+    matches = match_descriptors(des_left, des_right)
 
     # Take only the best match from each pair for display
     best_matches = [m[0] for m in matches]
@@ -104,7 +94,7 @@ def part1_3(img_left, img_right, kp_left, des_left, kp_right, des_right):
     return matches
 
 
-def part1_4(img_left, img_right, kp_left, des_left, kp_right, des_right, matches):
+def part1_4(img_left, img_right, kp_left, kp_right, matches):
     """Apply significance test (Lowe's ratio test) and report results.
 
     Lowe's ratio test rejects ambiguous matches where the best and second-best
@@ -117,14 +107,7 @@ def part1_4(img_left, img_right, kp_left, des_left, kp_right, des_right, matches
     is therefore likely correct despite failing the ratio test.
     """
     ratio = 0.75
-    good_matches = []
-    rejected_matches = []
-
-    for m, n in matches:
-        if m.distance < ratio * n.distance:
-            good_matches.append(m)
-        else:
-            rejected_matches.append(m)
+    good_matches, rejected_matches = apply_ratio_test(matches, ratio)
 
     num_discarded = len(rejected_matches)
     print(f"\nPart 1.4:")
@@ -205,7 +188,7 @@ def main():
     img_left, img_right, kp_left, des_left, kp_right, des_right = part1_1()
     part1_2(des_left)
     matches = part1_3(img_left, img_right, kp_left, des_left, kp_right, des_right)
-    part1_4(img_left, img_right, kp_left, des_left, kp_right, des_right, matches)
+    part1_4(img_left, img_right, kp_left, kp_right, matches)
 
 
 if __name__ == '__main__':
